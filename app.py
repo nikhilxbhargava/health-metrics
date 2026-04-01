@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, timedelta
 
-from auth import get_auth_url, exchange_code_for_token, refresh_access_token, get_token
+from auth import get_auth_url, exchange_code_for_token, refresh_access_token, get_token, get_pat
 from oura_client import OuraClient
 from db import init_db, store_data, load_data, log_sync, get_last_sync, get_categories
 
@@ -21,36 +21,39 @@ init_db()
 # ---------------------------------------------------------------------------
 query_params = st.query_params
 
-# Handle OAuth callback
-if "code" in query_params:
-    code = query_params["code"]
-    try:
-        token_data = exchange_code_for_token(code)
-        st.query_params.clear()
-        st.rerun()
-    except Exception as e:
-        st.error(f"Auth failed: {e}")
+# Handle OAuth callback (only needed when not using a PAT)
+if not get_pat():
+    if "code" in query_params:
+        code = query_params["code"]
+        try:
+            token_data = exchange_code_for_token(code)
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Auth failed: {e}")
+            st.stop()
+
+    token = get_token()
+
+    if token is None:
+        st.title("Health Metrics")
+        st.write("Connect your Oura Ring to get started.")
+        auth_url = get_auth_url()
+        st.link_button("Connect Oura Ring", auth_url)
         st.stop()
-
-token = get_token()
-
-if token is None:
-    st.title("Health Metrics")
-    st.write("Connect your Oura Ring to get started.")
-    auth_url = get_auth_url()
-    st.link_button("Connect Oura Ring", auth_url)
-    st.stop()
 
 
 # ---------------------------------------------------------------------------
 # Authenticated — sidebar controls
 # ---------------------------------------------------------------------------
 def get_client() -> OuraClient:
-    """Get an OuraClient, refreshing the token if needed."""
+    """Get an OuraClient using a PAT or stored OAuth token."""
+    pat = get_pat()
+    if pat:
+        return OuraClient(pat)
     t = get_token()
     try:
         client = OuraClient(t["access_token"])
-        # Quick test
         client._get("/personal_info")
         return client
     except Exception:
