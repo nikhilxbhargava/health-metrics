@@ -35,7 +35,7 @@ if "code" in query_params:
 token = get_token()
 
 if token is None:
-    st.title("Health Metrics Dashboard")
+    st.title("Health Metrics")
     st.write("Connect your Oura Ring to get started.")
     auth_url = get_auth_url()
     st.link_button("Connect Oura Ring", auth_url)
@@ -58,14 +58,11 @@ def get_client() -> OuraClient:
         return OuraClient(new_token["access_token"])
 
 
-st.sidebar.title("Health Metrics")
-
 # Date range selector
-col1, col2 = st.sidebar.columns(2)
 default_end = date.today()
 default_start = default_end - timedelta(days=30)
-start_date = col1.date_input("From", value=default_start)
-end_date = col2.date_input("To", value=default_end)
+start_date = st.sidebar.date_input("From", value=default_start)
+end_date = st.sidebar.date_input("To", value=default_end)
 
 # Sync button
 if st.sidebar.button("Sync Data from Oura", type="primary"):
@@ -101,7 +98,7 @@ def load_df(category: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
-st.title("Health Metrics Dashboard")
+st.title("Health Metrics")
 
 categories = get_categories()
 
@@ -122,7 +119,8 @@ with tab_sleep:
         # Score over time
         if "score" in df_sleep.columns:
             st.subheader("Sleep Score")
-            fig = px.line(df_sleep, x="day", y="score", markers=True)
+            fig = px.scatter(df_sleep, x="day", y="score")
+            fig.update_traces(marker_size=10)
             fig.update_layout(yaxis_range=[0, 100])
             st.plotly_chart(fig, use_container_width=True)
 
@@ -171,7 +169,8 @@ with tab_activity:
     else:
         if "score" in df_activity.columns:
             st.subheader("Activity Score")
-            fig = px.line(df_activity, x="day", y="score", markers=True)
+            fig = px.scatter(df_activity, x="day", y="score")
+            fig.update_traces(marker_size=10)
             fig.update_layout(yaxis_range=[0, 100])
             st.plotly_chart(fig, use_container_width=True)
 
@@ -190,7 +189,8 @@ with tab_activity:
         cal_cols = [c for c in ["active_calories", "total_calories"] if c in df_activity.columns]
         if cal_cols:
             st.subheader("Calories")
-            fig = px.line(df_activity, x="day", y=cal_cols, markers=True)
+            fig = px.scatter(df_activity, x="day", y=cal_cols)
+            fig.update_traces(marker_size=8)
             st.plotly_chart(fig, use_container_width=True)
 
         # Movement breakdown
@@ -210,7 +210,8 @@ with tab_readiness:
     else:
         if "score" in df_readiness.columns:
             st.subheader("Readiness Score")
-            fig = px.line(df_readiness, x="day", y="score", markers=True)
+            fig = px.scatter(df_readiness, x="day", y="score")
+            fig.update_traces(marker_size=10)
             fig.update_layout(yaxis_range=[0, 100])
             st.plotly_chart(fig, use_container_width=True)
 
@@ -258,7 +259,8 @@ with tab_other:
         st.subheader("SpO2")
         spo2_col = "spo2_percentage.average" if "spo2_percentage.average" in df_spo2.columns else None
         if spo2_col:
-            fig = px.line(df_spo2, x="day", y=spo2_col, markers=True, labels={spo2_col: "SpO2 %"})
+            fig = px.scatter(df_spo2, x="day", y=spo2_col, labels={spo2_col: "SpO2 %"})
+            fig.update_traces(marker_size=8)
             st.plotly_chart(fig, use_container_width=True)
 
     # Stress
@@ -267,7 +269,8 @@ with tab_other:
         st.subheader("Stress")
         stress_col = next((c for c in ["stress_high", "recovery_high", "day_summary"] if c in df_stress.columns), None)
         if stress_col:
-            fig = px.line(df_stress, x="day", y=stress_col, markers=True)
+            fig = px.scatter(df_stress, x="day", y=stress_col)
+            fig.update_traces(marker_size=8)
             st.plotly_chart(fig, use_container_width=True)
         elif "day" in df_stress.columns:
             st.dataframe(df_stress, use_container_width=True)
@@ -277,7 +280,8 @@ with tab_other:
     if not df_resilience.empty:
         st.subheader("Resilience")
         if "level" in df_resilience.columns:
-            fig = px.line(df_resilience, x="day", y="level", markers=True)
+            fig = px.scatter(df_resilience, x="day", y="level")
+            fig.update_traces(marker_size=8)
             st.plotly_chart(fig, use_container_width=True)
 
     # Workouts
