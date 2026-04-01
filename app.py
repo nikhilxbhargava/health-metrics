@@ -1,14 +1,18 @@
 """Streamlit dashboard for Oura Ring health metrics."""
 
+import os
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, timedelta
+from dotenv import load_dotenv
 
-from auth import get_auth_url, exchange_code_for_token, refresh_access_token, get_token, get_pat
 from oura_client import OuraClient
 from db import init_db, store_data, load_data, log_sync, get_last_sync, get_categories
+
+load_dotenv()
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -16,49 +20,14 @@ from db import init_db, store_data, load_data, log_sync, get_last_sync, get_cate
 st.set_page_config(page_title="Health Metrics", page_icon="💤", layout="wide")
 init_db()
 
-# ---------------------------------------------------------------------------
-# OAuth handling
-# ---------------------------------------------------------------------------
-query_params = st.query_params
-
-# Handle OAuth callback (only needed when not using a PAT)
-if not get_pat():
-    if "code" in query_params:
-        code = query_params["code"]
-        try:
-            token_data = exchange_code_for_token(code)
-            st.query_params.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"Auth failed: {e}")
-            st.stop()
-
-    token = get_token()
-
-    if token is None:
-        st.title("Health Metrics")
-        st.write("Connect your Oura Ring to get started.")
-        auth_url = get_auth_url()
-        st.link_button("Connect Oura Ring", auth_url)
-        st.stop()
+OURA_PAT = os.getenv("OURA_PAT")
+if not OURA_PAT:
+    st.error("Missing OURA_PAT in .env file.")
+    st.stop()
 
 
-# ---------------------------------------------------------------------------
-# Authenticated — sidebar controls
-# ---------------------------------------------------------------------------
 def get_client() -> OuraClient:
-    """Get an OuraClient using a PAT or stored OAuth token."""
-    pat = get_pat()
-    if pat:
-        return OuraClient(pat)
-    t = get_token()
-    try:
-        client = OuraClient(t["access_token"])
-        client._get("/personal_info")
-        return client
-    except Exception:
-        new_token = refresh_access_token(t["refresh_token"])
-        return OuraClient(new_token["access_token"])
+    return OuraClient(OURA_PAT)
 
 
 # Date range selector
@@ -93,7 +62,7 @@ def load_df(category: str) -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.json_normalize(records)
     if "day" in df.columns:
-        df["day"] = pd.to_datetime(df["day"])
+        df["day"] = pd.to_datetime(df["day"], utc=True)
         df = df.sort_values("day")
     return df
 
@@ -140,12 +109,11 @@ with tab_sleep:
     df_sleep_detail = load_df("sleep")
     if not df_sleep_detail.empty:
         st.subheader("Sleep Stages")
-        stage_cols = [c for c in df_sleep_detail.columns if c.startswith("sleep_phase_5_min")]
         duration_cols = ["deep_sleep_duration", "light_sleep_duration", "rem_sleep_duration", "awake_time"]
         available = [c for c in duration_cols if c in df_sleep_detail.columns]
         if available:
             if "bedtime_start" in df_sleep_detail.columns:
-                df_sleep_detail["night"] = pd.to_datetime(df_sleep_detail["bedtime_start"]).dt.date
+                df_sleep_detail["night"] = pd.to_datetime(df_sleep_detail["bedtime_start"], utc=True).dt.date
             elif "day" in df_sleep_detail.columns:
                 df_sleep_detail["night"] = df_sleep_detail["day"]
 
@@ -245,7 +213,7 @@ with tab_hr:
     else:
         st.subheader("Heart Rate")
         if "timestamp" in df_hr.columns and "bpm" in df_hr.columns:
-            df_hr["timestamp"] = pd.to_datetime(df_hr["timestamp"])
+            df_hr["timestamp"] = pd.to_datetime(df_hr["timestamp"], utc=True)
             fig = px.line(df_hr, x="timestamp", y="bpm")
             fig.update_layout(yaxis_title="BPM")
             st.plotly_chart(fig, use_container_width=True)
@@ -283,8 +251,7 @@ with tab_other:
     if not df_resilience.empty:
         st.subheader("Resilience")
         if "level" in df_resilience.columns:
-            fig = px.scatter(df_resilience, x="day", y="level")
-            fig.update_traces(marker_size=8)
+            fig = px.line(df_resilience, x="day", y="level", markers=True)
             st.plotly_chart(fig, use_container_width=True)
 
     # Workouts
