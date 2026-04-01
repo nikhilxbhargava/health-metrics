@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Health Metrics Dashboard",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "app.py"],
+      "port": 8501
+    }
+  ]
+}

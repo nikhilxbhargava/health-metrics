@@ -1,0 +1,6 @@
+.env
+.oura_token.json
+__pycache__/
+*.pyc
+*.db
+.venv/
