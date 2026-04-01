@@ -25,15 +25,12 @@ echo "Installing dependencies..."
 # Create .env if missing
 if [ ! -f ".env" ]; then
     echo ""
-    echo "Oura API credentials are required."
-    echo "Get them at: https://cloud.ouraring.com/oauth/applications"
+    echo "An Oura Personal Access Token is required."
+    echo "Get one at: https://cloud.ouraring.com/personal-access-tokens"
     echo ""
-    read -p "Oura Client ID: " client_id
-    read -p "Oura Client Secret: " client_secret
+    read -p "Oura Personal Access Token: " oura_pat
     cat > .env <<EOF
-OURA_CLIENT_ID=$client_id
-OURA_CLIENT_SECRET=$client_secret
-OURA_REDIRECT_URI=http://localhost:8501/oauth/callback
+OURA_PAT=$oura_pat
 EOF
     echo ".env created."
 fi

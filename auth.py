@@ -17,6 +17,12 @@ OURA_TOKEN_URL = "https://api.ouraring.com/oauth/token"
 CLIENT_ID = os.getenv("OURA_CLIENT_ID")
 CLIENT_SECRET = os.getenv("OURA_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("OURA_REDIRECT_URI", "http://localhost:8501/oauth/callback")
+PAT = os.getenv("OURA_PAT")
+
+
+def get_pat() -> str | None:
+    """Return a Personal Access Token if configured."""
+    return PAT
 
 
 def get_auth_url() -> str:
